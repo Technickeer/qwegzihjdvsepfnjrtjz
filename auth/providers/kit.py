@@ -15,6 +15,10 @@ class KITProvider(SSOProvider):
         self.session.headers.pop('x-inertia', None)
         self.session.headers.pop('x-inertia-version', None)
 
+        print(self.redirect_response.status_code, self.redirect_response.url)
+        with open('debug_login.html', 'w') as f:
+            f.write(self.redirect_response.text)print(self.redirect_response.status_code, self.redirect_response.url)
+        
         csrf_token = extract_html_value(
             self.redirect_response.text,
             r'name="csrf_token" value="([^"]+)"'
