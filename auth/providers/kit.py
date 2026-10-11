@@ -17,7 +17,7 @@ class KITProvider(SSOProvider):
 
         print(self.redirect_response.status_code, self.redirect_response.url)
         with open('debug_login.html', 'w') as f:
-            f.write(self.redirect_response.text)print(self.redirect_response.status_code, self.redirect_response.url)
+            f.write(self.redirect_response.text)
         
         csrf_token = extract_html_value(
             self.redirect_response.text,
