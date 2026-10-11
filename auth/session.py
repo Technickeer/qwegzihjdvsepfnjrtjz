@@ -58,11 +58,34 @@ class AnnySession:
 
         r2 = self.session.post(f"{AUTH_BASE_URL}/login/sso", json={"domain": self.provider.domain})
         redirect_url = r2.headers['x-inertia-location']
-        redirect_response = self.session.get(redirect_url)
+
+        # From here on this is a normal browser navigation, not an Inertia XHR.
+        # If the Inertia headers stay set, auth.anny.eu answers its own
+        # /federation/... redirect with "409 + X-Inertia-Location" instead of
+        # redirecting to the IdP login page, and no csrf_token can be found.
+        for header in ('x-requested-with', 'x-inertia', 'x-inertia-version'):
+            self.session.headers.pop(header, None)
+
+        redirect_response = self._follow_inertia_redirects(redirect_url)
 
         # Pass session and redirect response to provider
         self.provider.set_session(self.session)
         self.provider.set_redirect_response(redirect_response)
+
+    def _follow_inertia_redirects(self, url: str, max_hops: int = 5) -> requests.Response:
+        """GET url, following Inertia 409 + X-Inertia-Location redirects like a browser would."""
+        response = self.session.get(url)
+        for _ in range(max_hops):
+            location = response.headers.get('x-inertia-location')
+            if response.status_code != 409 or not location:
+                break
+            response = self.session.get(location)
+
+        if response.status_code >= 400:
+            raise ValueError(
+                f"SSO redirect failed: HTTP {response.status_code} at {response.url}"
+            )
+        return response
 
     def _provider_auth(self):
         """Delegate authentication to the SSO provider."""
